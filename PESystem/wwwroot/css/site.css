@@ -131,6 +131,27 @@ body::before {
     border-radius: 20px !important;
 }
 
+@media (min-width: 768px) {
+    .sidebar:hover:not(.open):not(.mobile-show) {
+        width: 230px !important;
+        border-radius: 20px !important;
+    }
+
+    .sidebar:hover:not(.open):not(.mobile-show) .nav-link span {
+        opacity: 1;
+        display: inline-block;
+    }
+
+    .sidebar:hover:not(.open):not(.mobile-show) .dashboard-container .spanTitle,
+    .sidebar:hover:not(.open):not(.mobile-show) .sidebar-avatar-name {
+        opacity: 1;
+    }
+
+    .sidebar:hover:not(.open):not(.mobile-show) .dashboard-container .spanTitle {
+        transform: translateX(0);
+    }
+}
+
 .sidebar .dashboard-container {
     display: flex;
     align-items: center;
