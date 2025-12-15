@@ -272,8 +272,7 @@ body::before {
 .dashboard-stage {
     flex: 1;
     min-height: calc(100vh - 10px);
-    margin: 5px;
-    margin-left: 80px;
+    margin: 5px 5px 5px 80px;
     display: flex;
     align-items: flex-start;
     justify-content: center;
@@ -285,10 +284,6 @@ body::before {
     overflow-x: hidden;
     position: relative;
     transition: margin-left 0.3s ease, margin 0.3s ease;
-}
-
-html.sidebar-expanded .dashboard-stage {
-    margin-left: 250px;
 }
 
 .sidebar,
@@ -326,8 +321,9 @@ html.sidebar-expanded .dashboard-stage {
 /* === DASHBOARD WRAPPER === */
 .dashboard-wrapper {
     width: 100%;
-    margin: 20px;
-    padding: 0 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -479,8 +475,7 @@ html.sidebar-expanded .dashboard-stage {
         transform: translateX(0);
     }
 
-    .dashboard-stage,
-    html.sidebar-expanded .dashboard-stage {
+    .dashboard-stage {
         margin-left: 0 !important;
     }
 }
