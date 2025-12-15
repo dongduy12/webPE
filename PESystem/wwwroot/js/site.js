@@ -37,7 +37,9 @@ function setupSidebar() {
     if (setupSidebar.initialized) return;
     setupSidebar.initialized = true;
 
-    const isMobile = () => window.innerWidth < 768;
+    function isMobile() {
+        return window.innerWidth < 768;
+    }
 
     /* Mobile toggle */
     sidebarToggleBtn?.addEventListener('click', () => {
