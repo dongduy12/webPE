@@ -329,7 +329,7 @@ const KhoScrapManager = (function () {
         handleTrayInput: () => {
             const trayInput = document.querySelector('input[name="location"]');
             let trayData = [];
-            let maxSlots = 400;
+            let maxSlots = 600;
 
             trayInput.addEventListener("input", function () {
                 let location = trayInput.value.trim().toUpperCase();
@@ -493,8 +493,8 @@ const KhoScrapManager = (function () {
 
                 document.getElementById("duplicate-warning").style.display = hasDuplicates ? "block" : "none";
                 const totalSerials = trayData.length + serialNumbers.length;
-                document.getElementById("serial-limit-warning").style.display = totalSerials > 400 ? "block" : "none";
-                document.getElementById("serial-count").textContent = `Tổng số serial đã nhập: ${totalSerials}/400`;
+                document.getElementById("serial-limit-warning").style.display = totalSerials > 600 ? "block" : "none";
+                document.getElementById("serial-count").textContent = `Tổng số serial đã nhập: ${totalSerials}/600`;
                 await Import.updateSerialDetails(serialNumbers);
             });
         }
