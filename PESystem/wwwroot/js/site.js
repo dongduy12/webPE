@@ -21,6 +21,7 @@ function applyPerformanceMode() {
 
 
 /* ======================== SIDEBAR ======================== */
+/* ======================== SIDEBAR (ĐÃ SỬA) ======================== */
 function setupSidebar() {
     const sidebar = document.getElementById('sidebar');
     const dashboardStage = document.querySelector('.dashboard-stage');
@@ -39,6 +40,23 @@ function setupSidebar() {
 
     const isMobile = () => window.innerWidth < 768;
 
+    /* --- ĐƯA HÀM NÀY LÊN TRÊN ĐẦU ĐỂ TRÁNH LỖI HOISTING/MINIFY --- */
+    /* Core logic - setSidebarState */
+    const setSidebarState = (isFixed) => {
+        const mobile = isMobile();
+        const shouldExpand = isFixed && !mobile;
+
+        rootElement.classList.toggle('sidebar-expanded', shouldExpand);
+
+        if (mobile) {
+            sidebar.classList.remove('open', 'sidebar-hover');
+            return;
+        }
+
+        sidebar.classList.remove('mobile-show');
+        sidebar.classList.toggle('open', isFixed);
+    };
+
     /* Mobile toggle */
     sidebarToggleBtn?.addEventListener('click', () => {
         sidebar.classList.toggle('mobile-show');
@@ -46,6 +64,7 @@ function setupSidebar() {
 
     /* Update icon */
     const updateToggleIcon = (isFixed) => {
+        // Thêm optional chaining (?) để tránh lỗi nếu không tìm thấy icon
         toggleIcon?.classList.toggle('ri-record-circle-line', isFixed);
         toggleIcon?.classList.toggle('ri-checkbox-blank-circle-line', !isFixed);
     };
@@ -68,8 +87,11 @@ function setupSidebar() {
         }
     };
 
+    /* --- LOGIC CHÍNH CHẠY SAU KHI ĐÃ KHAI BÁO CÁC HÀM --- */
     const isFixed = loadStoredState();
     toggleCheckbox.checked = isFixed;
+
+    // Bây giờ gọi hàm này sẽ an toàn tuyệt đối
     setSidebarState(isFixed);
     updateToggleIcon(isFixed);
 
@@ -98,25 +120,7 @@ function setupSidebar() {
     window.addEventListener('resize', () => {
         setSidebarState(toggleCheckbox.checked);
     });
-
-    /* Core logic */
-    function setSidebarState(isFixed) {
-        const mobile = isMobile();
-        const shouldExpand = isFixed && !mobile;
-
-        rootElement.classList.toggle('sidebar-expanded', shouldExpand);
-
-        if (mobile) {
-            sidebar.classList.remove('open', 'sidebar-hover');
-            return;
-        }
-
-        sidebar.classList.remove('mobile-show');
-        sidebar.classList.toggle('open', isFixed);
-    }
 }
-
-
 /* ======================== USER INFO DROPDOWN ======================== */
 function setupUserInfo() {
     const avatarBtn = document.getElementById("avatarBtn");

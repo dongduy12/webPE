@@ -15,7 +15,8 @@
     --glass-border: rgba(255, 255, 255, 0.18);
     --glass-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
     --glass-radius: 14px;
-    --surface-overlay: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+    --sidebar-surface: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+    --stage-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
     --panel-shadow: 0 5px 14px rgba(15, 35, 95, 0.08);
     --panel-shadow-strong: 0 8px 18px rgba(15, 35, 95, 0.12);
 }
@@ -63,19 +64,14 @@ body::before {
 /* ===========================================
    HELPER: GLASS BASE
 =========================================== */
-/* 1. SỬA LẠI CLASS .glass CHUNG (quan trọng nhất) */
 .glass,
 .sidebar,
 .dashboard-stage,
 .sidebar-avatar,
 .user-info-card {
-    background: var(--surface-overlay), var(--glass-overlay), var(--glass-image);
-    background-size: cover, cover;
-    background-position: center, center;
-    background-repeat: no-repeat, no-repeat;
-    /* ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT */
-    background-attachment: fixed, fixed !important; /* ảnh blur cố định tuyệt đối */
-
+    background: var(--glass-overlay), var(--glass-image);
+    background-size: cover;
+    background-repeat: no-repeat;
     border-radius: var(--glass-radius);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
@@ -172,9 +168,12 @@ body::before {
 }
 
 .sidebar-expanded .sidebar {
-    width: 230px;
+    width: 230px !important;
 }
-
+/* Khi class 'sidebar-expanded' được JS thêm vào thẻ HTML/Root */
+.sidebar-expanded .dashboard-stage {
+    margin-left: 250px !important;
+}
 /* ================================
    NAV LINK
 ================================ */
@@ -223,6 +222,7 @@ body::before {
 .sidebar-expanded .sidebar .nav-link span {
     opacity: 1;
     display: inline-block;
+    pointer-events: auto;
 }
 
 .sidebar .nav-link:hover {
@@ -276,6 +276,7 @@ body::before {
     display: flex;
     align-items: flex-start;
     justify-content: center;
+    padding: 12px 0;
     background-size: cover;
     background-repeat: no-repeat;
     border-radius: 20px;
@@ -288,12 +289,30 @@ body::before {
 
 .sidebar,
 .dashboard-stage {
+    background: var(--glass-overlay); /* chỉ lớp mờ tối */
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
     /* Nếu bạn vẫn muốn thêm chút vibrancy */
-    /*backdrop-filter: blur(3px);*/ /* nhẹ thôi, để blur chính từ ::before */
-    /*-webkit-backdrop-filter: blur(3px);*/
+    backdrop-filter: blur(6px); /* nhẹ thôi, để blur chính từ ::before */
+    -webkit-backdrop-filter: blur(6px);
 }
+
+    /* Thay vào đó: áp blur + noise CHỈ cho sidebar và dashboard-stage */
+    .sidebar::before,
+    .dashboard-stage::before {
+        content: "";
+        position: relative;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        /* Đây chính là lớp blur + background gốc */
+        background: var(--glass-image), /* blur image */
+        url('../assets/img/background1.jpg'); /* ảnh nền thật */
+        background-size: cover, cover;
+        background-position: center;
+        background-attachment: fixed, fixed; /* cố định tuyệt đối */
+        border-radius: inherit; /* bo góc theo phần tử */
+    }
 
     .sidebar::after,
     .dashboard-stage::after {
@@ -321,8 +340,7 @@ body::before {
 /* === DASHBOARD WRAPPER === */
 .dashboard-wrapper {
     width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
+    margin: 20px;
     padding: 0 1.5rem;
     display: flex;
     flex-direction: column;
@@ -330,6 +348,8 @@ body::before {
     transform-origin: top center;
     transition: transform 0.25s ease;
 }
+
+
 
 
 

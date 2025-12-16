@@ -83,15 +83,17 @@ async function handleInputSN() {
     const purpose = document.getElementById("Scrap-options").value;
     const speApproveTime = document.getElementById("speApproveTime-input").value;
     const createdBy = document.getElementById("analysisPerson").value;
+    const reasonRemove = document.getElementById("reason-remove").value;
 
     // =======================
     // VALIDATION
     // =======================
-    if (!sNs.length) return showWarning("Please enter SN");
-    if (!description) return showWarning("Please enter description");
-    if (!approveScrapPerson) return showWarning("Please enter the approver");
-    if (!["0", "1", "2", "3", "4"].includes(purpose)) return showWarning("Please select the scrap type");
-    if (!speApproveTime) return showWarning("Please enter the approval time");
+    if (!sNs.length) return showWarning("Please enter SN!");
+    if (!description) return showWarning("Please enter description!");
+    if (!approveScrapPerson) return showWarning("Please enter the approver!");
+    if (!["0", "1", "2", "3", "4"].includes(purpose)) return showWarning("Please select the scrap type!");
+    if (!speApproveTime) return showWarning("Please enter the approval time!");
+    if (!reasonRemove) return showWarning("Please enter the reason remove!");
 
     // =======================
     // CALL SMARTREPAIR FIRST
@@ -309,6 +311,46 @@ async function callSmartRepairDelete(snList) {
     }
 }
 
+async function callSmartRepairUnblock(snList) {
+
+    const createdBy = document.getElementById("analysisPerson").value;
+    const reasonRemove = document.getElementById("reason-remove").value;
+
+    const payload = {
+        type: "unblock",
+        sn_list: snList.join(","),
+        type_bp: "",
+        status: "",
+        task: "",
+        emp_no: createdBy,
+        reason: reasonRemove
+    };
+
+    try {
+        const res = await fetch("https://sfc-portal.cns.myfiinet.com/SfcSmartRepair/api/repair_scrap", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const text = await res.text();
+        //const cleanText = text.replace(/^"|"$/g, '').trim();
+
+        // Delete thành công thường trả về "Ok delete ..." hoặc "OK"
+        if (text === '"OK"') {
+            return { success: true, message:"OK" };
+        }
+
+        return {
+            success: false,
+            message: "SmartRepair unblock failed!"
+        };
+
+    } catch (err) {
+        return { success: false, message: "Không kết nối được SmartRepair system!" };
+    }
+}
+
 
 async function handlePmUpdate() {
     const snList = parseSerialInput("sn-input-pm");
@@ -375,28 +417,19 @@ async function handleCostUpdate() {
 // ==============================
 // REMOVE APPROVED SN
 // ==============================
+// ==============================
+// REMOVE APPROVED SN (SQL OK -> SmartRepair delete + unblock)
+// ==============================
 async function handleRemoveSN() {
     const snList = parseSerialInput("sn-input-remove");
-
     if (!snList.length) return showWarning("Please enter SN!");
 
     // =======================
-    // CALL SMARTREPAIR FIRST
-    // =======================
-    showLoading("Synchronizing SmartRepair for deletion...");
-
-    const smart = await callSmartRepairDelete(snList);
-
-    if (!smart.success) {
-        return showError("SmartRepair error:<br>" + (smart.message || ""));
-    }
-
-    // =======================
-    // CALL REMOVE SQL SERVER
+    // 1) CALL REMOVE SQL SERVER FIRST
     // =======================
     showLoading("Deleting SN on SQL Server...");
-    let result = {};
 
+    let result = {};
     try {
         const payload = { snList };
 
@@ -406,23 +439,45 @@ async function handleRemoveSN() {
             body: JSON.stringify(payload)
         });
 
+        // parse JSON safe
         try {
             result = await res.json();
         } catch {
             result = {};
         }
+
         if (!res.ok) {
             return showError("Delete SN failed:<br>" + (result.message || ""));
         }
-
-        showSuccess(`
-            <b>Remove SN success!</b><br>
-            SmartRepair: ${smart.message || "OK"}<br>
-            SQL Remove: ${result.message}
-        `);
     } catch (err) {
-        showError("Cannot connect to SQL Server!");
+        return showError("Cannot connect to SQL Server!");
     }
+
+    // ✅ SQL success -> mới gọi SmartRepair
+    showLoading("Synchronizing SmartRepair (delete + unblock)...");
+
+    // =======================
+    // 2) CALL SMARTREPAIR DELETE + UNBLOCK
+    // =======================
+    const smartDelete = await callSmartRepairDelete(snList);
+    if (!smartDelete.success) {
+        return showError("SmartRepair DELETE error:<br>" + (smartDelete.message || "") + "<br>Contact PE/IT");
+    }
+
+    const smartUnblock = await callSmartRepairUnblock(snList);
+    if (!smartUnblock.success) {
+        return showError("SmartRepair UNBLOCK error:<br>" + (smartUnblock.message || "") + "<br>Contact PE/IT");
+    }
+
+    // =======================
+    // DONE
+    // =======================
+    showSuccess(`
+        <b>Remove SN success!</b><br>
+        SQL Remove: ${result.message || "OK"}<br>
+        SmartRepair Delete: ${smartDelete.message || "OK"}<br>
+        SmartRepair Unblock: ${smartUnblock.message || "OK"}
+    `);
 }
 
 // ==============================

@@ -1504,7 +1504,7 @@ SELECT
                   A.WIP_GROUP LIKE '%B36R%'
                   AND B.MODEL_SERIAL = 'ADAPTER'
                   AND R107.WIP_GROUP NOT LIKE '%BR2C%'
-                  AND R107.WIP_GROUP NOT LIKE '%BCFA%'";
+                  AND R107.WIP_GROUP NOT LIKE '%B36R_STOCKIN%'";
 
             using var command = new OracleCommand(query, connection);
             using var reader = await command.ExecuteReaderAsync();
