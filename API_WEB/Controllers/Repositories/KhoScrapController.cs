@@ -571,13 +571,18 @@ namespace API_WEB.Controllers.Repositories
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            // Chuẩn hóa Serial Number để tránh lỗi so khớp khi collation phân biệt hoa/thường
+            var normalizedSerials = sanitizedSerials
+                .Select(sn => sn.ToUpperInvariant())
+                .ToList();
+
             if (!sanitizedSerials.Any())
             {
                 return BadRequest(new { success = false, message = "Danh sách Serial Numbers không hợp lệ." });
             }
 
             var scraps = await _sqlContext.KhoScraps
-                .Where(k => sanitizedSerials.Contains(k.SERIAL_NUMBER))
+                .Where(k => normalizedSerials.Contains(k.SERIAL_NUMBER.ToUpper()))
                 .ToListAsync();
 
             if (!scraps.Any())
@@ -587,7 +592,7 @@ namespace API_WEB.Controllers.Repositories
 
             foreach (var scrap in scraps)
             {
-                scrap.Note = request.Note ?? string.Empty;
+                scrap.Note = request.Note?.Trim() ?? string.Empty;
 
                 if (!string.IsNullOrWhiteSpace(request.UpdatedBy))
                 {
