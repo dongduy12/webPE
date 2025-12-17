@@ -559,35 +559,52 @@ namespace API_WEB.Controllers.Repositories
         {
             try
             {
-                if (serialNumbers == null || !serialNumbers.Any())
+                if (serialNumbers == null)
                 {
                     return BadRequest(new { success = false, message = "Danh sách serialNumbers rỗng." });
                 }
 
+                var normalizedSerials = serialNumbers
+                    .Where(sn => !string.IsNullOrWhiteSpace(sn))
+                    .Select(sn => sn.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (!normalizedSerials.Any())
+                {
+                    return BadRequest(new { success = false, message = "Danh sách serialNumbers rỗng." });
+                }
+
+                var normalizedLookup = normalizedSerials
+                    .Select(sn => sn.ToUpperInvariant())
+                    .ToList();
+
                 var results = new List<InforProduct>();
                 var notFoundSerialNumbers = new List<string>();
 
-                // 1. Tìm tất cả serialNumbers trong SQL Server
+                // 1. Tìm tất cả serialNumbers trong SQL Server (không phân biệt hoa/thường)
                 var productsFromSql = await _sqlContext.KhoScraps
-                    .Where(p => serialNumbers.Contains(p.SERIAL_NUMBER))
+                    .Where(p => normalizedLookup.Contains(p.SERIAL_NUMBER.ToUpper()))
                     .ToListAsync();
 
-                var foundSerialNumbersInSql = productsFromSql.Select(p => p.SERIAL_NUMBER).ToList();
+                var foundSerialNumbersInSql = productsFromSql
+                    .Select(p => p.SERIAL_NUMBER.ToUpper())
+                    .ToList();
 
                 // Xác định các serialNumbers chưa tìm thấy trong SQL Server
-                var remainingSerialNumbers = serialNumbers.Except(foundSerialNumbersInSql).ToList();
+                var remainingSerialNumbers = normalizedLookup.Except(foundSerialNumbersInSql).ToList();
 
                 // 2. Kết nối Oracle
                 await using var connection = new OracleConnection(_oracleConnectionString);
                 await connection.OpenAsync();
 
                 // 3. Lấy dữ liệu từ Oracle cho tất cả serialNumbers
-                var oracleData = await GetOracleDataAsync(connection, serialNumbers);
+                var oracleData = await GetOracleDataAsync(connection, normalizedLookup);
 
                 // 4. Kết hợp dữ liệu từ SQL Server và Oracle
                 foreach (var product in productsFromSql)
                 {
-                    var oracleInfo = oracleData.GetValueOrDefault(product.SERIAL_NUMBER);
+                    var oracleInfo = oracleData.GetValueOrDefault(product.SERIAL_NUMBER.ToUpperInvariant());
 
                     results.Add(new InforProduct
                     {
@@ -617,7 +634,7 @@ namespace API_WEB.Controllers.Repositories
                 }
 
                 // 5. Thêm các serialNumbers không tìm thấy vào danh sách notFoundSerialNumbers
-                notFoundSerialNumbers = serialNumbers.Except(results.Select(r => r.SerialNumber)).ToList();
+                notFoundSerialNumbers = normalizedLookup.Except(results.Select(r => r.SerialNumber.ToUpperInvariant())).ToList();
 
                 // 6. Trả về kết quả
                 return Ok(new
