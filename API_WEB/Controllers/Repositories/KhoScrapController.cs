@@ -557,6 +557,54 @@ namespace API_WEB.Controllers.Repositories
             }
         }
 
+        [HttpPost("UpdateNote")]
+        public async Task<IActionResult> UpdateNote([FromBody] UpdateNoteRequest request)
+        {
+            if (request?.SerialNumbers == null || !request.SerialNumbers.Any())
+            {
+                return BadRequest(new { success = false, message = "Danh sách Serial Numbers không hợp lệ." });
+            }
+
+            var sanitizedSerials = request.SerialNumbers
+                .Where(sn => !string.IsNullOrWhiteSpace(sn))
+                .Select(sn => sn.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!sanitizedSerials.Any())
+            {
+                return BadRequest(new { success = false, message = "Danh sách Serial Numbers không hợp lệ." });
+            }
+
+            var scraps = await _sqlContext.KhoScraps
+                .Where(k => sanitizedSerials.Contains(k.SERIAL_NUMBER))
+                .ToListAsync();
+
+            if (!scraps.Any())
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy Serial Number trong KhoScrap." });
+            }
+
+            foreach (var scrap in scraps)
+            {
+                scrap.Note = request.Note ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(request.UpdatedBy))
+                {
+                    await LogAction("UPDATE_NOTE_SCRAP", scrap.SERIAL_NUMBER, request.UpdatedBy, request.Note);
+                }
+            }
+
+            await _sqlContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                updatedCount = scraps.Count,
+                message = "Cập nhật ghi chú thành công."
+            });
+        }
+
         [HttpGet("totalKhoOk")]
         public async Task<IActionResult> GetTotalKhoOk()
         {
@@ -1058,6 +1106,13 @@ namespace API_WEB.Controllers.Repositories
             public bool Success { get; set; }
             public List<ExportScrapResult> Results { get; set; } = null!;
             public string Message { get; set; } = null!;
+        }
+
+        public class UpdateNoteRequest
+        {
+            public List<string> SerialNumbers { get; set; } = null!;
+            public string? Note { get; set; }
+            public string? UpdatedBy { get; set; }
         }
 
     }

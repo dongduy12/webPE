@@ -269,6 +269,70 @@ const KhoScrapManager = (function () {
         }
     };
 
+    // Nhóm hàm cập nhật ghi chú
+    const Notes = {
+        updateNotesForSelected: async () => {
+            const selectedSerials = Borrow.selectedSNs;
+            if (!selectedSerials.length) {
+                Utils.showWarning("Vui lòng chọn ít nhất một Serial Number để cập nhật ghi chú!");
+                return;
+            }
+
+            const { value: note } = await Swal.fire({
+                title: 'Cập nhật ghi chú',
+                input: 'textarea',
+                inputLabel: 'Nhập ghi chú mới',
+                inputPlaceholder: 'Nhập nội dung ghi chú...',
+                inputAttributes: {
+                    'aria-label': 'Nhập ghi chú mới'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Cập nhật',
+                cancelButtonText: 'Hủy'
+            });
+
+            if (note === undefined) {
+                return;
+            }
+
+            try {
+                Utils.showSpinner();
+                const response = await fetch(`${API_BASE_URL}/UpdateNote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serialNumbers: selectedSerials,
+                        note: note ?? '',
+                        updatedBy: document.getElementById('entryPerson')?.value || 'Unknown'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Không thể cập nhật ghi chú!');
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    Utils.showError(data.message || 'Cập nhật ghi chú thất bại!');
+                    return;
+                }
+
+                Utils.showSuccess(`Đã cập nhật ghi chú cho ${data.updatedCount || 0} serial.`);
+
+                searchResultsSN = searchResultsSN.map(result => selectedSerials.includes(result.serialNumber)
+                    ? { ...result, note: note ?? '' }
+                    : result);
+
+                Render.renderTable(searchResultsSN, 'results-body');
+                Borrow.updateSelected();
+            } catch (error) {
+                Utils.showError(error.message || 'Có lỗi xảy ra khi cập nhật ghi chú.');
+            } finally {
+                Utils.hideSpinner();
+            }
+        }
+    };
+
     // Nhóm hàm cho mượn
     const Borrow = {
         selectedSNs: [],
@@ -279,6 +343,11 @@ const KhoScrapManager = (function () {
             const borrowBtn = document.getElementById('borrow-btn');
             if (borrowBtn) {
                 borrowBtn.style.display = Borrow.selectedSNs.length > 0 ? 'inline-block' : 'none';
+            }
+
+            const updateNoteBtn = document.getElementById('update-note-btn');
+            if (updateNoteBtn) {
+                updateNoteBtn.style.display = Borrow.selectedSNs.length > 0 ? 'inline-block' : 'none';
             }
         },
 
@@ -511,7 +580,7 @@ const KhoScrapManager = (function () {
 
             resultsBody.innerHTML = "";
             if (!results || results.length === 0) {
-                resultsBody.innerHTML = "<tr><td colspan='18'>Không tìm thấy kết quả!</td></tr>";
+                resultsBody.innerHTML = "<tr><td colspan='20'>Không tìm thấy kết quả!</td></tr>";
                 return;
             }
 
@@ -640,6 +709,11 @@ const KhoScrapManager = (function () {
             const borrowBtn = document.getElementById("borrow-btn");
             if (borrowBtn) {
                 borrowBtn.addEventListener("click", Borrow.borrowSelected);
+            }
+
+            const updateNoteBtn = document.getElementById("update-note-btn");
+            if (updateNoteBtn) {
+                updateNoteBtn.addEventListener("click", Notes.updateNotesForSelected);
             }
 
             document.addEventListener("change", (e) => {
