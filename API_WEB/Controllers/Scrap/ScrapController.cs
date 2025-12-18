@@ -107,6 +107,11 @@ namespace API_WEB.Controllers.Scrap
                     return BadRequest(new { message = "Danh sách SN không được để trống." });
                 }
 
+                if (request.SNs.Count >= 230)
+                {
+                    return BadRequest(new { message = "Mỗi lần input chỉ được phép nhỏ hơn 230 SN." });
+                }
+
                 if (string.IsNullOrEmpty(request.CreatedBy) || string.IsNullOrEmpty(request.ApproveScrapPerson) || string.IsNullOrEmpty(request.SpeApproveTime))
                 {
                     return BadRequest(new { message = "CreatedBy , ApproveScrapPerson và SpeAproveTime  không được để trống." });
@@ -1317,6 +1322,11 @@ namespace API_WEB.Controllers.Scrap
                 if (request == null || request.SNs == null || !request.SNs.Any())
                 {
                     return BadRequest(new { message = "Danh sách SN không được để trống." });
+                }
+
+                if (request.SNs.Count >= 230)
+                {
+                    return BadRequest(new { message = "Mỗi lần input chỉ được phép nhỏ hơn 230 SN." });
                 }
 
                 if (string.IsNullOrEmpty(request.CreatedBy) || string.IsNullOrEmpty(request.Remark) || string.IsNullOrEmpty(request.Approve))

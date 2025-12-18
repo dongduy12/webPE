@@ -220,6 +220,11 @@ namespace API_WEB.Controllers.Scrap
                     return BadRequest(new { message = "SN list cannot be empty!" });
                 }
 
+                if (request.SnList.Count >= 230)
+                {
+                    return BadRequest(new { message = "Each delete request must contain fewer than 230 SNs." });
+                }
+
                 // Lấy danh sách bản ghi thỏa mãn điều kiện ApplyTaskStatus = 2 và ModelType SWITCH
                 var recordsToRemove = await _sqlContext.ScrapLists
                     .Where(s => request.SnList.Contains(s.SN) && s.ApplyTaskStatus == 2 && s.ModelType == "SWITCH")
@@ -313,6 +318,9 @@ namespace API_WEB.Controllers.Scrap
                 .Where(sn => !string.IsNullOrWhiteSpace(sn))
                 .Select(sn => sn.Trim())
                 .ToList();
+
+            if (requestSnSet.Count >= 230)
+                return BadRequest(new { message = "Each input request must contain fewer than 230 SNs." });
 
             if (requestSnSet.Count != requestSnSet.Distinct(StringComparer.OrdinalIgnoreCase).Count())
                 return BadRequest(new { message = "The SN list contains duplicate values" });
