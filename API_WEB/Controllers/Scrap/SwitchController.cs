@@ -217,7 +217,7 @@ namespace API_WEB.Controllers.Scrap
             {
                 if (request?.SnList == null || !request.SnList.Any())
                 {
-                    return BadRequest(new { message = "Danh sách SN không được để trống." });
+                    return BadRequest(new { message = "SN list cannot be empty!" });
                 }
 
                 // Lấy danh sách bản ghi thỏa mãn điều kiện ApplyTaskStatus = 2 và ModelType SWITCH
@@ -227,23 +227,29 @@ namespace API_WEB.Controllers.Scrap
 
                 if (!recordsToRemove.Any())
                 {
-                    return NotFound(new { message = "Không tìm thấy SN nào có ApplyTaskStatus = 2." });
+                    return NotFound(new { message = "SNs can only be removed when ApplyStatus is 2 (Pending Customer Approval)" });
                 }
 
-                await AddHistoryEntriesAsync(recordsToRemove, "remove");
+                var deletedSns = recordsToRemove.Select(r => r.SN).ToList();
 
+                await AddHistoryEntriesAsync(recordsToRemove, "remove");
                 _sqlContext.ScrapLists.RemoveRange(recordsToRemove);
                 await _sqlContext.SaveChangesAsync();
 
-                return Ok(new { message = "Đã xóa danh sách SN thành công." });
+                return Ok(new
+                {
+                    message = "SN list deleted successfully",
+                    count = deletedSns.Count,
+                    deletedSns = deletedSns
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa dữ liệu.", error = ex.Message });
+                return StatusCode(500, new { message = "Error occurred while deleting data.", error = ex.Message });
             }
         }
 
-        // API: Lấy dữ liệu từ ScrapList với ApplyTaskStatus = 2 & 4
+        // API: Lấy dữ liệu từ ScrapList với ApplyTaskStatus = 2
         [HttpGet("get-status-two-four-switch")]
         public async Task<IActionResult> GetScrapStatusTwoSwitch()
         {
@@ -265,14 +271,14 @@ namespace API_WEB.Controllers.Scrap
 
                 if (!scrapData.Any())
                 {
-                    return NotFound(new { message = "Không tìm thấy dữ liệu với ApplyTaskStatus = 2." });
+                    return NotFound(new { message = "No data found with ApplyTaskStatus = 2" });
                 }
 
                 return Ok(scrapData);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy dữ liệu.", error = ex.Message });
+                return StatusCode(500, new { message = "Error occurred while deleting data", error = ex.Message });
             }
         }
 

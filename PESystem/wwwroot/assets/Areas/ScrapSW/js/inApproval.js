@@ -22,13 +22,14 @@ function showLoading(msg) {
 // =========================================================
 // API 1: INSERT ORACLE
 // =========================================================
-async function insertOracle(snListString, typeBonepile) {
+async function insertOracle(snListString, typeBonepile, createdBy) {
     let payload = {
         type: "insert",
         sn_list: snListString,
         type_bp: typeBonepile,
         status: "2",
-        task: null
+        task: null,
+        emp_no: createdBy
     };
 
     try {
@@ -197,7 +198,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // insert Oracle
         showLoading("Inserting into Oracle...");
-        let okOracle = await insertOracle(snListString, typeBonepile);
+        let okOracle = await insertOracle(snListString, typeBonepile, createdBy);
 
         if (!okOracle.success) {
             Swal.close();
@@ -215,7 +216,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!sql || sql.success !== true) {
             Swal.close();
-            return Swal.fire("Lỗi", sql?.message || "Insert SQL failed!", "error");
+            return Swal.fire("Error", sql?.message || "Insert SQL failed!", "error");
         }
         // Thành công
         Swal.close();

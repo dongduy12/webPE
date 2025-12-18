@@ -79,7 +79,7 @@ function formatPurpose(purpose) {
     return purposeMap[normalized] ?? normalized;
 }
 
-async function callSmartRepairApi(snList, status, task = "") {
+async function callSmartRepairApi(snList, status, task = "", currentUsername) {
     const normalizedSnList = Array.isArray(snList)
         ? snList.map(sn => sn.trim()).filter(Boolean)
         : [];
@@ -91,9 +91,9 @@ async function callSmartRepairApi(snList, status, task = "") {
     const payload = {
         type: "update",
         sn_list: normalizedSnList.join(","),
-        type_bp: "",
         status,
-        task: task || ""
+        task: task || "",
+        emp_no: currentUsername
     };
 
     try {
@@ -525,7 +525,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 let smartRepairResult = null;
                 if (["0", "1", "2", "3"].includes(purpose)) {
-                    smartRepairResult = await callSmartRepairApi(sNs, "0");
+                    smartRepairResult = await callSmartRepairApi(sNs, "0", currentUsername);
                 }
 
                 const updateProductRequest = { serialNumbers: sNs, scrapStatus };
@@ -625,7 +625,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const updateResult = await updateResponse.json();
             if (updateResponse.ok) {
-                const smartRepairResult = await callSmartRepairApi(snList, "5", task);
+                const smartRepairResult = await callSmartRepairApi(snList, "5", task, currentUsername);
                 const messages = [
                     `<strong>Thành công:</strong> ${updateResult.message}`
                 ];
