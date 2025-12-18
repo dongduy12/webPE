@@ -291,7 +291,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         sn_list: snListString,
                         type_bp: typeBonepile,
                         status: typeApprove,
-                        task: null
+                        task: null,
+                        emp_no: createdBy
                     };
 
                     const repairScrapResponse = await fetch("https://sfc-portal.cns.myfiinet.com/SfcSmartRepair/api/repair_scrap", {

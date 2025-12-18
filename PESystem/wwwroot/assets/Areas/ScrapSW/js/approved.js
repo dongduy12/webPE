@@ -31,15 +31,15 @@ function parseSerialInput(textareaId) {
 }
 
 // ==============================
-// CALL SMARTREPAIR API - PHIÊN BẢN CHẮN CHẮN 100% (2025)
+// CALL SMARTREPAIR API update
 // ==============================
-async function callSmartRepair(snList, status, task = "") {
+async function callSmartRepair(snList, status, task = "", createdBy) {
     const payload = {
         type: "update",
         sn_list: snList.join(","),
-        type_bp: "",
         status,
-        task
+        task,
+        emp_no: createdBy
     };
 
     try {
@@ -100,7 +100,7 @@ async function handleInputSN() {
     // =======================
     showLoading("Synchronizing SmartRepair...");
 
-    const smart = await callSmartRepair(sNs, "0");
+    const smart = await callSmartRepair(sNs, "0", "", createdBy);
 
     if (!smart.success) {
         return showError("SmartRepair error:<br>" + smart.message);
@@ -178,18 +178,18 @@ async function handleUpdateTaskPO() {
         }
 
         const invalidSNs = (statusResult.data || [])
-            .filter(item => item.applyTaskStatus !== 20)
+            .filter(item => item.applyTaskStatus !== 9)
             .map(item => item.sn || item.SN)
             .filter(Boolean);
 
         if (invalidSNs.length) {
-            return showError(`Only update when Task/PO khi Cost approved (ApplyTaskStatus = 20)<br>Invalid SN: ${invalidSNs.join(", ")}`);
+            return showError(`Only update when Task/PO khi PM approved (ApplyTaskStatus = 9)<br>Invalid SN: ${invalidSNs.join(", ")}`);
         }
     } catch (err) {
         return showError("Cannot check ApplyTaskStatus");
     }
 
-    const smart = await callSmartRepair(snList, "5", task);
+    const smart = await callSmartRepair(snList, "5", task, createdBy);
 
     if (!smart.success) {
         return showError("SmartRepair error:<br>" + smart.message);
@@ -198,7 +198,7 @@ async function handleUpdateTaskPO() {
     // =======================
     // CALL SQL UPDATE TASK PO
     // =======================
-    showLoading("Đang cập nhật Task/PO...");
+    showLoading("Updating Task/PO...");
 
     try {
         const payload = { snList, task, po };
@@ -235,7 +235,7 @@ async function callUpdateApplyStatus(snList, targetStatus, successTitle) {
     // =======================
     showLoading("Synchronizing SmartRepair...");
 
-    const smart = await callSmartRepair(snList, String(targetStatus));
+    const smart = await callSmartRepair(snList, String(targetStatus), "", createdBy);
 
     if (!smart.success) {
         return showError("SmartRepair error:<br>" + smart.message);
@@ -277,13 +277,12 @@ async function callUpdateApplyStatus(snList, targetStatus, successTitle) {
     }
 }
 
-async function callSmartRepairDelete(snList) {
+async function callSmartRepairDelete(snList, createdBy, reasonRemove) {
     const payload = {
         type: "delete",
         sn_list: snList.join(","),
-        type_bp: "",
-        status: "",
-        task: ""
+        emp_no: createdBy,
+        reason: reasonRemove
     };
 
     try {
@@ -311,17 +310,10 @@ async function callSmartRepairDelete(snList) {
     }
 }
 
-async function callSmartRepairUnblock(snList) {
-
-    const createdBy = document.getElementById("analysisPerson").value;
-    const reasonRemove = document.getElementById("reason-remove").value;
-
+async function callSmartRepairUnblock(snList, createdBy, reasonRemove) {
     const payload = {
         type: "unblock",
         sn_list: snList.join(","),
-        type_bp: "",
-        status: "",
-        task: "",
         emp_no: createdBy,
         reason: reasonRemove
     };
@@ -336,7 +328,7 @@ async function callSmartRepairUnblock(snList) {
         const text = await res.text();
         //const cleanText = text.replace(/^"|"$/g, '').trim();
 
-        // Delete thành công thường trả về "Ok delete ..." hoặc "OK"
+        // Unblock thành công trả về "OK"
         if (text === '"OK"') {
             return { success: true, message:"OK" };
         }
@@ -370,12 +362,12 @@ async function handlePmUpdate() {
         }
 
         const invalidSNs = (statusResult.data || [])
-            .filter(item => item.applyTaskStatus !== 0)
+            .filter(item => item.applyTaskStatus !== 20)
             .map(item => item.sn || item.SN)
             .filter(Boolean);
 
         if (invalidSNs.length) {
-            return showError(`Only update when ApplyTaskStatus = 0.<br>Invalid SN: ${invalidSNs.join(", ")}`);
+            return showError(`Only update when ApplyTaskStatus = 20.<br>Invalid SN: ${invalidSNs.join(", ")}`);
         }
     } catch (err) {
         return showError("Cannot check ApplyTaskStatus!");
@@ -401,12 +393,12 @@ async function handleCostUpdate() {
         }
 
         const invalidSNs = (statusResult.data || [])
-            .filter(item => item.applyTaskStatus !== 9)
+            .filter(item => item.applyTaskStatus !== 0)
             .map(item => item.sn || item.SN)
             .filter(Boolean);
 
         if (invalidSNs.length) {
-            return showError(`Only update when ApplyTaskStatus = 9.<br>Invalid SN: ${invalidSNs.join(", ")}`);
+            return showError(`Only update when ApplyTaskStatus = 0.<br>Invalid SN: ${invalidSNs.join(", ")}`);
         }
     } catch (err) {
         return showError("Cannot check ApplyTaskStatus!");
@@ -415,14 +407,15 @@ async function handleCostUpdate() {
 }
 
 // ==============================
-// REMOVE APPROVED SN
-// ==============================
-// ==============================
 // REMOVE APPROVED SN (SQL OK -> SmartRepair delete + unblock)
 // ==============================
 async function handleRemoveSN() {
     const snList = parseSerialInput("sn-input-remove");
+    const createdBy = document.getElementById("analysisPerson").value;
+    const reasonRemove = document.getElementById("reason-remove").value;
+
     if (!snList.length) return showWarning("Please enter SN!");
+    if (!reasonRemove.length) return showWarning("Please enter reason unblock!");
 
     // =======================
     // 1) CALL REMOVE SQL SERVER FIRST
@@ -439,32 +432,37 @@ async function handleRemoveSN() {
             body: JSON.stringify(payload)
         });
 
-        // parse JSON safe
-        try {
-            result = await res.json();
-        } catch {
-            result = {};
-        }
+        result = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            return showError("Delete SN failed:<br>" + (result.message || ""));
+            return showError("Delete SN failed:<br>" + (result.message || "Unknown error"));
         }
+        
     } catch (err) {
         return showError("Cannot connect to SQL Server!");
     }
+    // Lấy danh sách SN thực tế đã xóa từ Backend trả về
+    const actualDeletedSns = result.deletedSns || [];
 
-    // ✅ SQL success -> mới gọi SmartRepair
-    showLoading("Synchronizing SmartRepair (delete + unblock)...");
+    if (actualDeletedSns.length === 0) {
+        return showError("No SNs were updated on SQL Server.");
+    }
+
+    // ==========================================
+    // 2) CALL SMARTREPAIR (Chỉ dùng actualDeletedSns)
+    // ==========================================
+    showLoading(`Synchronizing ${actualDeletedSns.length} SNs to SmartRepair...`);
 
     // =======================
     // 2) CALL SMARTREPAIR DELETE + UNBLOCK
     // =======================
-    const smartDelete = await callSmartRepairDelete(snList);
+    const smartDelete = await callSmartRepairDelete(actualDeletedSns, createdBy, reasonRemove);
+
     if (!smartDelete.success) {
         return showError("SmartRepair DELETE error:<br>" + (smartDelete.message || "") + "<br>Contact PE/IT");
     }
 
-    const smartUnblock = await callSmartRepairUnblock(snList);
+    const smartUnblock = await callSmartRepairUnblock(actualDeletedSns, createdBy, reasonRemove);
     if (!smartUnblock.success) {
         return showError("SmartRepair UNBLOCK error:<br>" + (smartUnblock.message || "") + "<br>Contact PE/IT");
     }
@@ -474,9 +472,9 @@ async function handleRemoveSN() {
     // =======================
     showSuccess(`
         <b>Remove SN success!</b><br>
-        SQL Remove: ${result.message || "OK"}<br>
-        SmartRepair Delete: ${smartDelete.message || "OK"}<br>
-        SmartRepair Unblock: ${smartUnblock.message || "OK"}
+        Count: ${actualDeletedSns.length} SN(s)<br>
+        SQL Status: ${result.message || "OK"}<br>
+        SmartRepair: Synced successfully
     `);
 }
 
