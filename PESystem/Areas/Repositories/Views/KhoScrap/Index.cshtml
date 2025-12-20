@@ -225,7 +225,7 @@
             }
 
         .card {
-            border-radius: 15px; /* Bo tròn card */
+            border-radius: 10px; /* Bo tròn card */
             overflow: hidden;
             background: #fff;
             transition: all 0.3s ease-in-out;
@@ -238,8 +238,103 @@
         }
 
         .hidden {
-            display: none !important;
+            display: none;
         }
+
+        .datatable-wrapper {
+            max-height: 700px;
+            max-width: 100%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .datatable-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: auto;
+            width: max-content;
+            font-size: 10px;
+        }
+
+            .datatable-table th,
+            .datatable-table td {
+                white-space: nowrap;
+                padding: 4px 8px;
+            }
+
+            /* ============================
+                   STICKY HEADER (luôn ở trên)
+                ============================= */
+            .datatable-table thead th {
+                position: sticky;
+                top: 0;
+                background-color: #343a40 !important;
+                color: #fff;
+                z-index: 30; /* header chung */
+            }
+
+                /* ============================
+                   CỘT 1 — CHECKBOX
+                ============================= */
+
+                /* Header cột 1 (giao giữa sticky row + sticky col) */
+                .datatable-table thead th:nth-child(1) {
+                    position: sticky !important;
+                    left: 0;
+                    z-index: 40; /* cao hơn header thường + td */
+                }
+
+            /* Body cột 1 */
+            .datatable-table tbody td:nth-child(1) {
+                position: sticky !important;
+                left: 0;
+                z-index: 20;
+                background-color: #ffffff !important;
+                min-width: 50px !important;
+                max-width: 50px !important;
+                text-align: center;
+            }
+
+            /* ============================
+                   CỘT 2 — SERIAL_NUMBER
+                ============================= */
+
+            /* Header cột 2 */
+            .datatable-table thead th:nth-child(2) {
+                position: sticky !important;
+                left: 50px; /* = chiều rộng cột 1 */
+                z-index: 60 !important;
+            }
+
+            /* Body cột 2 */
+            .datatable-table tbody td:nth-child(2) {
+                position: sticky !important;
+                left: 50px; /* phải trùng với trên */
+                z-index: 20;
+                background-color: #ffffff !important;
+                min-width: 120px;
+            }
+
+            /* Viền tách 2 cột đầu */
+            .datatable-table th:nth-child(1),
+            .datatable-table td:nth-child(1),
+            .datatable-table th:nth-child(2),
+            .datatable-table td:nth-child(2) {
+                border-right: 2px solid #dee2e6;
+            }
+
+            /* Hover nguyên hàng */
+            .datatable-table tbody tr:hover td,
+            .datatable-table tbody tr:hover th {
+                background-color: #76b900 !important;
+                cursor: pointer;
+            }
+
+            .datatable-table tbody tr.auto-block:hover td,
+            .datatable-table tbody tr.auto-block:hover th {
+                background-color: #76b900 !important;
+            }
+
     </style>
     <script>
         document.getElementById("options-function").addEventListener("change", function () {
@@ -262,8 +357,6 @@
             document.getElementById("button-action").classList.add("hidden");
         });
     </script>
-    <link href="~/lib/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet" />
-    <link href="~/lib/sweetalert2/dist/sweetalert2.css" rel="stylesheet" />
-    <script src="~/lib/sweetalert2/dist/sweetalert2.js"></script>
+
     <script src="~/assets/areas/repositories/js/khoScrap.js?v=@DateTime.Now.Ticks"></script>
 }

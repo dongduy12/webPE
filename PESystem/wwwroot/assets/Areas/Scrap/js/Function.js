@@ -93,7 +93,8 @@ async function callSmartRepairApi(snList, status, task = "", currentUsername) {
         sn_list: normalizedSnList.join(","),
         status,
         task: task || "",
-        emp_no: currentUsername
+        emp_no: currentUsername,
+        reason: "Update data scrap"
     };
 
     try {

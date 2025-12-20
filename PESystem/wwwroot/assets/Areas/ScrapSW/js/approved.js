@@ -39,7 +39,8 @@ async function callSmartRepair(snList, status, task = "", createdBy) {
         sn_list: snList.join(","),
         status,
         task,
-        emp_no: createdBy
+        emp_no: createdBy,
+        reason: "Update data scrap"
     };
 
     try {
@@ -456,15 +457,15 @@ async function handleRemoveSN() {
     // =======================
     // 2) CALL SMARTREPAIR DELETE + UNBLOCK
     // =======================
-    const smartDelete = await callSmartRepairDelete(actualDeletedSns, createdBy, reasonRemove);
-
-    if (!smartDelete.success) {
-        return showError("SmartRepair DELETE error:<br>" + (smartDelete.message || "") + "<br>Contact PE/IT");
-    }
 
     const smartUnblock = await callSmartRepairUnblock(actualDeletedSns, createdBy, reasonRemove);
     if (!smartUnblock.success) {
         return showError("SmartRepair UNBLOCK error:<br>" + (smartUnblock.message || "") + "<br>Contact PE/IT");
+    }
+
+    const smartDelete = await callSmartRepairDelete(actualDeletedSns, createdBy, reasonRemove);
+    if (!smartDelete.success) {
+        return showError("SmartRepair DELETE error:<br>" + (smartDelete.message || "") + "<br>Contact PE/IT");
     }
 
     // =======================

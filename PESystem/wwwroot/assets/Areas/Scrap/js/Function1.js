@@ -292,7 +292,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         type_bp: typeBonepile,
                         status: typeApprove,
                         task: null,
-                        emp_no: createdBy
+                        emp_no: createdBy,
+                        reason: "Input Scrap"
                     };
 
                     const repairScrapResponse = await fetch("https://sfc-portal.cns.myfiinet.com/SfcSmartRepair/api/repair_scrap", {
