@@ -127,8 +127,8 @@ async function callSmartRepairApi(snList, status, task = "", currentUsername) {
 
 // Hàm ẩn tất cả form và khu vực kết quả
 function hideAllElements() {
-    const forms = ["input-sn-form", "custom-form", "custom-form-sn", "update-data-form", "history-apply-form"];
-    const results = ["input-sn-result", "create-task-result", "update-data-result", "history-apply-result", "create-task-result-sn"];
+    const forms = ["input-sn-form", "custom-form", "custom-form-sn", "update-data-form", "history-apply-form", "custom - form - bp2"];
+    const results = ["input-sn-result", "create-task-result", "update-data-result", "history-apply-result", "create-task-result-sn", "create-task-result-bp2"];
 
     forms.forEach(formId => {
         const form = document.getElementById(formId);
@@ -267,6 +267,102 @@ async function processCreateTaskBySN(sNs, resultDivId) {
 
     try {
         const response = await fetch("https://pe-vnmbd-nvidia-cns.myfiinet.com/api/Scrap/create-task-sn", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData)
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            const payload = Array.isArray(result.data) ? result.data : [];
+            if (!payload.length) {
+                statusContainer.innerHTML = `<div class="alert alert-warning"><strong>Thông báo:</strong> Không có dữ liệu để tải xuống.</div>`;
+                return;
+            }
+
+            const locationMap = await fetchLocationMap(payload.map(item => item.boardSN));
+
+            const excelData = payload.map(item => ({
+                InternalTask: item.internalTask ?? "N/A",
+                Item: item.item ?? "N/A",
+                Project: item.project ?? "N/A",
+                OPN: item.opn ?? "N/A",
+                Purpose: item.purpose ?? "N/A",
+                "IC PN": item.icPn ?? "N/A",
+                "IC Detail PN": item.icDetailPn ?? "N/A",
+                "Board SN": item.boardSN ?? "N/A",
+                Qty: item.qty ?? "N/A",
+                "After/Before Kanban": item.afterBeforeKanban ?? "N/A",
+                Category: item.category ?? "N/A",
+                CM: item.cm ?? "N/A",
+                Plant: item.plant ?? "N/A",
+                Sloc: item.sloc ?? "N/A",
+                "Task Number": item.taskNumber ?? "N/A",
+                "PO Number": item.poNumber ?? "N/A",
+                "Create By": item.createBy ?? "N/A",
+                "Create Date": item.createDate ?? "N/A",
+                Cost: item.cost ?? "N/A",
+                Remark: item.smtTime ?? "N/A",
+                Description: item.description ?? "N/A",
+                SpeApproveTime: item.speApproveTime ?? "N/A",
+                Location: locationMap[normalizeSerialNumber(item.boardSN)] ?? "N/A"
+            }));
+
+            // Sắp xếp dữ liệu theo InternalTask
+            excelData.sort((a, b) => a.InternalTask.localeCompare(b.InternalTask));
+
+            // Filter data into Before and After based on "After/Before Kanban"
+            const beforeData = excelData.filter(item => item["After/Before Kanban"] === "Before");
+            const afterData = excelData.filter(item => item["After/Before Kanban"] === "After");
+
+            // Create workbook and append two sheets
+            const workbook = XLSX.utils.book_new();
+            if (beforeData.length > 0) {
+                const beforeWorksheet = XLSX.utils.json_to_sheet(beforeData);
+                XLSX.utils.book_append_sheet(workbook, beforeWorksheet, "BeforeKanban");
+            }
+            if (afterData.length > 0) {
+                const afterWorksheet = XLSX.utils.json_to_sheet(afterData);
+                XLSX.utils.book_append_sheet(workbook, afterWorksheet, "AfterKanban");
+            }
+
+            // Generate filename with timestamp
+            const now = new Date();
+            const filename = `ScrapData_${now.toISOString().replace(/[:.]/g, '-')}.xlsx`;
+
+            // Write the workbook to file
+            XLSX.writeFile(workbook, filename);
+
+            const successMessage = result.message
+                ? `<div class="alert alert-warning">${escapeHtml(result.message)}</div>`
+                : `<div class="alert alert-success"><strong>Thành công:</strong> Dữ liệu đã được tải xuống.</div>`;
+
+            statusContainer.innerHTML = successMessage;
+        } else {
+            statusContainer.innerHTML = `<div class="alert alert-danger"><strong>Lỗi:</strong> ${escapeHtml(result.message)}</div>`;
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `<div class="alert alert-danger"><strong>Lỗi:</strong> Không thể kết nối đến API. Vui lòng kiểm tra lại.</div>`;
+        console.error("Error:", error);
+    }
+}
+
+
+// Xử lý tạo task bonepile 2
+async function processCreateTaskBonepile(sNs, resultDivId) {
+    const resultDiv = document.getElementById(resultDivId);
+    let statusContainer = resultDiv.querySelector('.action-feedback');
+    if (!statusContainer) {
+        statusContainer = document.createElement('div');
+        statusContainer.className = 'action-feedback mb-2';
+        resultDiv.prepend(statusContainer);
+    }
+    statusContainer.innerHTML = `<div class="alert alert-info"><strong>Thông báo:</strong> Đang tải xuống dữ liệu...</div>`;
+
+    const requestData = { sNs };
+
+    try {
+        const response = await fetch("https://pe-vnmbd-nvidia-cns.myfiinet.com/api/Scrap/create-task-bonepile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData)
@@ -590,6 +686,18 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         await processCreateTaskBySN(sNs, "create-task-result-sn");
+        document.getElementById("create-task-btn-sn-box").value = "";
+    });
+
+    // Xử lý nút "Tạo Task Bonepile 2.0"
+    document.getElementById("create-task-btn-bp2").addEventListener("click", async function () {
+        const snInput = document.getElementById("creat-task-bp2").value.trim();
+        const sNs = snInput.split(/\r?\n/).map(sn => sn.trim()).filter(sn => sn);
+        if (sNs.length === 0) {
+            alert("Vui lòng nhập ít nhất một Serial Number hợp lệ.");
+            return;
+        }
+        await processCreateTaskBonepile(sNs, "create-task-result-bp2");
         document.getElementById("create-task-btn-sn-box").value = "";
     });
 

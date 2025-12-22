@@ -713,7 +713,7 @@ namespace API_WEB.Controllers.Scrap
                 {
                     await connection.OpenAsync();
                     var snParams = string.Join(",", validSNs.Select((_, i) => $":p{i}"));
-                    using var command = new OracleCommand($"SELECT SERIAL_NUMBER, MODEL_NAME FROM SFISM4.NVIDIA_BONEPILE_SN_LOG WHERE SERIAL_NUMBER IN ({snParams})", connection);
+                    using var command = new OracleCommand($"SELECT SERIAL_NUMBER, MODEL_NAME FROM SFISM4.NVIDIA_BONPILE_SN_LOG WHERE SERIAL_NUMBER IN ({snParams})", connection);
                     for (int i = 0; i < validSNs.Count; i++)
                     {
                         command.Parameters.Add(new OracleParameter($"p{i}", OracleDbType.Varchar2) { Value = validSNs[i].SN });
@@ -845,6 +845,11 @@ namespace API_WEB.Controllers.Scrap
                 return Ok(new { message, data = result });
             }
             catch (Exception ex)
+
+
+
+
+
             {
                 return StatusCode(500, new { message = "Đã xảy ra lỗi khi tạo task.", error = ex.Message, innerException = ex.InnerException?.Message });
             }
