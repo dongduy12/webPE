@@ -19,6 +19,7 @@
                         <option value="INPUT_SN">INPUT SN</option>
                         <option value="CREATE_TASK_FORM">CREATE TASK FORM</option>
                         <option value="CREATE_TASK_FORM_SN">CREATE TASK FORM BY SN</option>
+                        <option value="CREATE_TASK_BP2">CREATE TASK FORM BP-20</option>
                         <option value="UPDATE_DATA">UPDATE DATA</option>
                     </select>
                 </form>
@@ -84,6 +85,19 @@
                     </div>
                     <div class="col-lg-4 d-flex align-items-end">
                         <button id="create-task-btn-sn" class="btn btn-ne w-100" type="button">Create</button>
+                    </div>
+                </div>
+            </form>
+
+            <form id="custom-form-bp2" method="post" class="hidden scrap-card" data-search-type="CREATE_TASK_FORM_SN">
+                <h3 class="h5 mb-3 text-uppercase fw-semibold">Create Task Bonepile 2.0</h3>
+                <div class="row g-3 align-items-stretch">
+                    <div class="col-lg-8">
+                        <label for="create-task-btn-sn-box" class="form-label">List SN</label>
+                        <textarea name="SN box" id="creat-task-bp2" class="form-control" rows="6" placeholder="Input SN"></textarea>
+                    </div>
+                    <div class="col-lg-4 d-flex align-items-end">
+                        <button id="create-task-btn-bp2" class="btn btn-ne w-100" type="button">Create</button>
                     </div>
                 </div>
             </form>
@@ -159,6 +173,9 @@
     </div>
 
     <div id="create-task-result-sn" class="hidden scrap-card"></div>
+
+    <div id="create-task-result-bp2" class="hidden scrap-card"></div>
+
     <div id="update-data-result" class="hidden scrap-card"></div>
 </div>
 
