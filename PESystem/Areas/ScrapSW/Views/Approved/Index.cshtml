@@ -156,10 +156,12 @@
                         </div>
 
                         <div class="g-3 mt-auto">
-                            <div class="col-12 d-flex justify-content-end">
-                                <button id="remove-btn" class="btn btn-ne" type="button">Remove</button>
+                            <div class="col-12 d-flex justify-content-end gap-2 flex-wrap">
+                                <button id="unblock-btn" class="btn btn-outline-ne" type="button">Unblock</button>
+                                <button id="delete-btn" class="btn btn-ne" type="button" disabled>Delete</button>
                             </div>
                         </div>
+                        <div id="remove-status" class="alert alert-light border mt-3 small hidden" role="status"></div>
                     </div>
                 </div>
             </form>
@@ -206,5 +208,4 @@
     </script>
     <script src="~/assets/areas/scrapsw/js/approved.js?v=@DateTime.Now.Ticks"></script>
 }
-
 

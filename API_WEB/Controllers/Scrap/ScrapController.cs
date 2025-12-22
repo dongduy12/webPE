@@ -650,8 +650,8 @@ namespace API_WEB.Controllers.Scrap
         }
 
         // API: Tạo task dựa trên danh sách SNs
-        [HttpPost("create-task-sn")]
-        public async Task<IActionResult> CreateTaskBySN([FromBody] CreateTaskBySNRequest request)
+        [HttpPost("create-task-bonepile")]
+        public async Task<IActionResult> CreateTaskBonepile([FromBody] CreateTaskBySNRequest request)
         {
             try
             {

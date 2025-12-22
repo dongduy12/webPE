@@ -22,6 +22,14 @@ function showWarning(msg) {
 }
 
 const SCRAP_API_BASE = "https://pe-vnmbd-nvidia-cns.myfiinet.com/api/Scrap";
+const removeFlowState = {
+    snKey: "",
+    reasonKey: "",
+    unblock: { attempted: false, success: false, message: "" },
+    delete: { attempted: false, success: false, message: "" },
+    sql: { attempted: false, success: false, message: "" },
+    inProgress: false
+};
 
 function parseSerialInput(textareaId) {
     return document.getElementById(textareaId).value.trim()
@@ -408,18 +416,148 @@ async function handleCostUpdate() {
 }
 
 // ==============================
-// REMOVE APPROVED SN (SQL OK -> SmartRepair delete + unblock)
+// REMOVE APPROVED SN FLOW (UNBLOCK -> DELETE -> SQL REMOVE)
 // ==============================
-async function handleRemoveSN() {
+function renderRemoveStatus() {
+    const statusBox = document.getElementById("remove-status");
+    if (!statusBox) return;
+
+    const rows = [
+        `<b>UNBLOCK:</b> ${removeFlowState.unblock.attempted ? (removeFlowState.unblock.success ? "OK" : "FAILED") : "Not started"}`,
+        removeFlowState.unblock.message ? `<div class="mt-1">Message: ${removeFlowState.unblock.message}</div>` : "",
+        `<b>DELETE:</b> ${removeFlowState.delete.attempted ? (removeFlowState.delete.success ? "OK" : "FAILED") : "Not started"}`,
+        removeFlowState.delete.message ? `<div class="mt-1">Message: ${removeFlowState.delete.message}</div>` : "",
+        `<b>SQL remove:</b> ${removeFlowState.sql.attempted ? (removeFlowState.sql.success ? "OK" : "FAILED") : "Not started"}`,
+        removeFlowState.sql.message ? `<div class="mt-1">Message: ${removeFlowState.sql.message}</div>` : ""
+    ].filter(Boolean);
+
+    statusBox.innerHTML = rows.join("<br>");
+    statusBox.classList.remove("hidden");
+}
+
+function resetRemoveFlow() {
+    removeFlowState.snKey = "";
+    removeFlowState.reasonKey = "";
+    removeFlowState.unblock = { attempted: false, success: false, message: "" };
+    removeFlowState.delete = { attempted: false, success: false, message: "" };
+    removeFlowState.sql = { attempted: false, success: false, message: "" };
+    removeFlowState.inProgress = false;
+
+    const deleteBtn = document.getElementById("delete-btn");
+    if (deleteBtn) deleteBtn.disabled = true;
+
+    const statusBox = document.getElementById("remove-status");
+    if (statusBox) {
+        statusBox.classList.add("hidden");
+        statusBox.innerHTML = "";
+    }
+}
+
+function buildRemoveKey(snList, reason) {
+    return `${snList.join("|")}::${reason}`;
+}
+
+function lockRemoveButtons(isLocked) {
+    document.getElementById("unblock-btn")?.toggleAttribute("disabled", isLocked);
+    document.getElementById("delete-btn")?.toggleAttribute("disabled", isLocked || !removeFlowState.unblock.attempted);
+}
+
+function enableDeleteButton() {
+    const deleteBtn = document.getElementById("delete-btn");
+    if (deleteBtn) deleteBtn.disabled = false;
+}
+
+function validateRemoveInputs() {
     const snList = parseSerialInput("sn-input-remove");
     const createdBy = document.getElementById("analysisPerson").value;
-    const reasonRemove = document.getElementById("reason-remove").value;
+    const reasonRemove = document.getElementById("reason-remove").value.trim();
 
-    if (!snList.length) return showWarning("Please enter SN!");
-    if (!reasonRemove.length) return showWarning("Please enter reason unblock!");
+    if (!snList.length) {
+        showWarning("Please enter SN!");
+        return null;
+    }
+    if (!reasonRemove.length) {
+        showWarning("Please enter reason unblock!");
+        return null;
+    }
+
+    return { snList, createdBy, reasonRemove };
+}
+
+async function handleUnblockSN() {
+    const inputs = validateRemoveInputs();
+    if (!inputs) return;
+    const { snList, createdBy, reasonRemove } = inputs;
+
+    const newKey = buildRemoveKey(snList, reasonRemove);
+    if (removeFlowState.snKey && newKey !== removeFlowState.snKey) {
+        resetRemoveFlow();
+    }
+
+    removeFlowState.snKey = buildRemoveKey(snList, reasonRemove);
+    removeFlowState.reasonKey = reasonRemove;
+    removeFlowState.inProgress = true;
+    lockRemoveButtons(true);
+    showLoading("Calling SmartRepair UNBLOCK...");
+
+    const smartUnblock = await callSmartRepairUnblock(snList, createdBy, reasonRemove);
+
+    removeFlowState.unblock.attempted = true;
+    removeFlowState.unblock.success = smartUnblock.success;
+    removeFlowState.unblock.message = smartUnblock.message || "";
+
+    Swal.close();
+    renderRemoveStatus();
+    enableDeleteButton();
+    removeFlowState.inProgress = false;
+    lockRemoveButtons(false);
+
+    if (smartUnblock.success) {
+        showSuccess("UNBLOCK success. You can proceed to DELETE.");
+    } else {
+        showWarning("UNBLOCK failed. You may still attempt DELETE.");
+    }
+}
+
+async function handleDeleteSN() {
+    if (!removeFlowState.unblock.attempted) {
+        return showWarning("Please click UNBLOCK before DELETE.");
+    }
+    if (removeFlowState.inProgress) return;
+
+    const inputs = validateRemoveInputs();
+    if (!inputs) return;
+    const { snList, createdBy, reasonRemove } = inputs;
+
+    const currentKey = buildRemoveKey(snList, reasonRemove);
+    if (removeFlowState.snKey && currentKey !== removeFlowState.snKey) {
+        resetRemoveFlow();
+        return showWarning("SN list or reason changed. Please UNBLOCK again before DELETE.");
+    }
+
+    removeFlowState.inProgress = true;
+    lockRemoveButtons(true);
 
     // =======================
-    // 1) CALL REMOVE SQL SERVER FIRST
+    // 1) CALL SMARTREPAIR DELETE
+    // =======================
+    showLoading("Calling SmartRepair DELETE...");
+    const smartDelete = await callSmartRepairDelete(snList, createdBy, reasonRemove);
+    removeFlowState.delete.attempted = true;
+    removeFlowState.delete.success = smartDelete.success;
+    removeFlowState.delete.message = smartDelete.message || "";
+
+    if (!smartDelete.success) {
+        Swal.close();
+        renderRemoveStatus();
+        showError("DELETE failed. SQL remove was not executed.");
+        removeFlowState.inProgress = false;
+        lockRemoveButtons(false);
+        return;
+    }
+
+    // =======================
+    // 2) CALL REMOVE SQL SERVER AFTER DELETE SUCCESS
     // =======================
     showLoading("Deleting SN on SQL Server...");
 
@@ -436,47 +574,57 @@ async function handleRemoveSN() {
         result = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            return showError("Delete SN failed:<br>" + (result.message || "Unknown error"));
+            removeFlowState.sql = {
+                attempted: true,
+                success: false,
+                message: result.message || "Unknown error"
+            };
+            Swal.close();
+            renderRemoveStatus();
+            showError("Delete SN failed:<br>" + (result.message || "Unknown error"));
+            removeFlowState.inProgress = false;
+            lockRemoveButtons(false);
+            return;
         }
         
     } catch (err) {
-        return showError("Cannot connect to SQL Server!");
+        removeFlowState.sql = { attempted: true, success: false, message: "Cannot connect to SQL Server!" };
+        Swal.close();
+        renderRemoveStatus();
+        showError("Cannot connect to SQL Server!");
+        removeFlowState.inProgress = false;
+        lockRemoveButtons(false);
+        return;
     }
     // Lấy danh sách SN thực tế đã xóa từ Backend trả về
     const actualDeletedSns = result.deletedSns || [];
 
     if (actualDeletedSns.length === 0) {
-        return showError("No SNs were updated on SQL Server.");
+        removeFlowState.sql = { attempted: true, success: false, message: "No SNs were updated on SQL Server." };
+        Swal.close();
+        renderRemoveStatus();
+        showError("No SNs were updated on SQL Server.");
+        removeFlowState.inProgress = false;
+        lockRemoveButtons(false);
+        return;
     }
 
-    // ==========================================
-    // 2) CALL SMARTREPAIR (Chỉ dùng actualDeletedSns)
-    // ==========================================
-    showLoading(`Synchronizing ${actualDeletedSns.length} SNs to SmartRepair...`);
-
-    // =======================
-    // 2) CALL SMARTREPAIR DELETE + UNBLOCK
-    // =======================
-
-    const smartUnblock = await callSmartRepairUnblock(actualDeletedSns, createdBy, reasonRemove);
-    if (!smartUnblock.success) {
-        return showError("SmartRepair UNBLOCK error:<br>" + (smartUnblock.message || "") + "<br>Contact PE/IT");
-    }
-
-    const smartDelete = await callSmartRepairDelete(actualDeletedSns, createdBy, reasonRemove);
-    if (!smartDelete.success) {
-        return showError("SmartRepair DELETE error:<br>" + (smartDelete.message || "") + "<br>Contact PE/IT");
-    }
+    removeFlowState.sql = { attempted: true, success: true, message: result.message || "OK" };
 
     // =======================
     // DONE
     // =======================
+    Swal.close();
+    renderRemoveStatus();
     showSuccess(`
         <b>Remove SN success!</b><br>
-        Count: ${actualDeletedSns.length} SN(s)<br>
-        SQL Status: ${result.message || "OK"}<br>
-        SmartRepair: Synced successfully
+        UNBLOCK: ${removeFlowState.unblock.success ? "OK" : "FAILED"}<br>
+        DELETE: OK<br>
+        SQL remove: OK<br>
+        Count: ${actualDeletedSns.length} SN(s)
     `);
+    removeFlowState.inProgress = false;
+    lockRemoveButtons(false);
 }
 
 // ==============================
@@ -487,5 +635,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("update-task-btn")?.addEventListener("click", handleUpdateTaskPO);
     document.getElementById("pm-update-btn")?.addEventListener("click", handlePmUpdate);
     document.getElementById("cost-update-btn")?.addEventListener("click", handleCostUpdate);
-    document.getElementById("remove-btn")?.addEventListener("click", handleRemoveSN);
+    document.getElementById("unblock-btn")?.addEventListener("click", handleUnblockSN);
+    document.getElementById("delete-btn")?.addEventListener("click", handleDeleteSN);
+
+    const resetInputs = ["sn-input-remove", "reason-remove"];
+    resetInputs.forEach(id => {
+        document.getElementById(id)?.addEventListener("input", () => {
+            resetRemoveFlow();
+        });
+    });
 });
