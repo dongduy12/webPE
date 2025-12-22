@@ -705,6 +705,33 @@ namespace API_WEB.Controllers.Scrap
                     return BadRequest(new { message = "Không có SN nào hợp lệ để tạo task." });
                 }
 
+                // Lấy thông tin OPN từ SFISM4.NVIDIA_BONEPILE_SN_LOG theo Serial Number
+                var oracleConnectionString = _oracleContext.Database.GetConnectionString();
+                var bonepileOpnMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                using (var connection = new OracleConnection(oracleConnectionString))
+                {
+                    await connection.OpenAsync();
+                    var snParams = string.Join(",", validSNs.Select((_, i) => $":p{i}"));
+                    using var command = new OracleCommand($"SELECT SERIAL_NUMBER, MODEL_NAME FROM SFISM4.NVIDIA_BONEPILE_SN_LOG WHERE SERIAL_NUMBER IN ({snParams})", connection);
+                    for (int i = 0; i < validSNs.Count; i++)
+                    {
+                        command.Parameters.Add(new OracleParameter($"p{i}", OracleDbType.Varchar2) { Value = validSNs[i].SN });
+                    }
+
+                    using var reader = await command.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var serialNumber = reader.IsDBNull(0) ? null : reader.GetString(0)?.Trim();
+                        var modelName = reader.IsDBNull(1) ? null : reader.GetString(1)?.Trim();
+
+                        if (!string.IsNullOrEmpty(serialNumber))
+                        {
+                            bonepileOpnMap[serialNumber] = modelName;
+                        }
+                    }
+                }
+
                 // Tạo danh sách SN để gửi đến API bên thứ ba
                 var serialNumbers = string.Join(",", validSNs.Select(s => s.SN));
                 Console.WriteLine($"Sending t_serial_numbers to external API: {serialNumbers}");
@@ -778,6 +805,7 @@ namespace API_WEB.Controllers.Scrap
                         slocValue = "FXV1";
                     }
                     string plantValue = scrap.Remark == "BP-20" ? "8620" : externalInfo?.Plant;
+                    bonepileOpnMap.TryGetValue(normalizedScrapSN, out var bonepileOpn);
 
                     return new
                     {
@@ -795,7 +823,7 @@ namespace API_WEB.Controllers.Scrap
                         Remark = scrap.Remark,
                         Item = externalInfo?.Item,
                         Project = externalInfo?.Project,
-                        Opn = externalInfo?.Opn,
+                        Opn = bonepileOpn,
                         IcPn = externalInfo?.IcPn,
                         IcDetailPn = externalInfo?.IcDetailPn,
                         Qty = externalInfo?.Qty,
